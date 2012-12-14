@@ -71,12 +71,6 @@ namespace XamarinCanvas
 			CanFocus = true;
 		}
 
-		public void TransformPointToParent (ref double x, ref double y)
-		{
-			if (Parent != null)
-				Parent.Transform.TransformPoint (ref x, ref y);
-		}
-
 		public void LayoutOutline (Cairo.Context context)
 		{
 			OnLayoutOutline (context);
@@ -97,17 +91,17 @@ namespace XamarinCanvas
 			OnMouseOut ();
 		}
 
-		public void MouseMotion (int x, int y, Gdk.ModifierType state)
+		public void MouseMotion (double x, double y, Gdk.ModifierType state)
 		{
 			OnMouseMotion (x, y, state);
 		}
 
-		public void ButtonPress (int x, int y, uint button, Gdk.ModifierType state) 
+		public void ButtonPress (double x, double y, uint button, Gdk.ModifierType state) 
 		{
 			OnButtonPress (x, y, button, state);
 		}
 
-		public void ButtonRelease (int x, int y, uint button, Gdk.ModifierType state) 
+		public void ButtonRelease (double x, double y, uint button, Gdk.ModifierType state) 
 		{
 			OnButtonRelease (x, y, button, state);
 		}
@@ -124,7 +118,7 @@ namespace XamarinCanvas
 			OnFocusOut ();
 		}
 
-		public void Clicked (int x, int y, Gdk.ModifierType state)
+		public void Clicked (double x, double y, Gdk.ModifierType state)
 		{
 			OnClicked (x, y, state);
 		}
@@ -159,7 +153,7 @@ namespace XamarinCanvas
 			return new Cairo.PointD(resX, resY);
 		}
 
-		public void CurveTo (int x1, int y1, int x2, int y2, int x3, int y3, uint length = 250, Func<float, float> easing = null)
+		public void CurveTo (double x1, double y1, double x2, double y2, double x3, double y3, uint length = 250, Func<float, float> easing = null)
 		{
 			if (easing == null)
 				easing = Easing.Linear;
@@ -175,13 +169,13 @@ namespace XamarinCanvas
 				.Commit (this, "MoveTo", 16, length);
 		}
 
-		public void MoveTo (int x, int y, uint length = 250, Func<float, float> easing = null)
+		public void MoveTo (double x, double y, uint length = 250, Func<float, float> easing = null)
 		{
 			if (easing == null)
 				easing = Easing.Linear;
 			new Animation ()
-				.Insert (0, 1, new Animation (f => X = f, (float)X, x, easing))
-				.Insert (0, 1, new Animation (f => Y = f, (float)Y, y, easing))
+				.Insert (0, 1, new Animation (f => X = f, (float)X, (float)x, easing))
+				.Insert (0, 1, new Animation (f => Y = f, (float)Y, (float)y, easing))
 				.Commit (this, "MoveTo", 16, length);
 		}
 
@@ -211,10 +205,10 @@ namespace XamarinCanvas
 
 		protected virtual void OnMouseIn () {}
 		protected virtual void OnMouseOut () {}
-		protected virtual void OnMouseMotion (int x, int y, Gdk.ModifierType state) {}
-		protected virtual void OnButtonPress (int x, int y, uint button, Gdk.ModifierType state) {}
-		protected virtual void OnButtonRelease (int x, int y, uint button, Gdk.ModifierType state) {}
-		protected virtual void OnClicked (int x, int y, Gdk.ModifierType state) {}
+		protected virtual void OnMouseMotion (double x, double y, Gdk.ModifierType state) {}
+		protected virtual void OnButtonPress (double x, double y, uint button, Gdk.ModifierType state) {}
+		protected virtual void OnButtonRelease (double x, double y, uint button, Gdk.ModifierType state) {}
+		protected virtual void OnClicked (double x, double y, Gdk.ModifierType state) {}
 		protected virtual void OnFocusIn () {}
 		protected virtual void OnFocusOut () {}
 		protected virtual void OnKeyPress (Gdk.EventKey evnt) {}
@@ -242,7 +236,7 @@ namespace XamarinCanvas
 
 	public class Canvas : Gtk.EventBox, Animatable
 	{
-		List<CanvasElement> elements;
+		GroupCanvasElement rootElement;
 
 		MouseTracker tracker;
 
@@ -311,7 +305,8 @@ namespace XamarinCanvas
 		{
 			AppPaintable = true;
 			CanFocus = true;
-			elements = new List<CanvasElement> ();
+			rootElement = new GroupCanvasElement ();
+			rootElement.Canvas = this;
 
 			AddEvents ((int)(Gdk.EventMask.AllEventsMask));
 			tracker = new MouseTracker (this);
@@ -319,16 +314,13 @@ namespace XamarinCanvas
 
 		public void AddElement (CanvasElement element)
 		{
-			elements.Add (element);
-			elements.Sort ();
-			element.Canvas = this;
+			rootElement.Add (element);
 			QueueDraw ();
 		}
 
 		public void RemoveElement (CanvasElement element)
 		{
-			elements.Remove (element);
-			element.Canvas = null;
+			rootElement.Remove (element);
 			QueueDraw ();
 		}
 
@@ -339,7 +331,7 @@ namespace XamarinCanvas
 				HoveredElement = GetElementAt (tracker.MousePosition.X, tracker.MousePosition.Y);
 		}
 
-		CanvasElement GetElementAt (Cairo.Context context, CanvasElement root, int x, int y)
+		CanvasElement GetElementAt (Cairo.Context context, CanvasElement root, double x, double y)
 		{
 			foreach (var element in root.Children.Reverse ()) {
 				var result = GetElementAt (context, element, x, y);
@@ -364,41 +356,37 @@ namespace XamarinCanvas
 			return null;
 		}
 
-		CanvasElement GetElementAt (int x, int y)
+		CanvasElement GetElementAt (double x, double y)
 		{
 			using (var context = Gdk.CairoHelper.Create (GdkWindow)) {
-				foreach (var element in elements.AsEnumerable ().Reverse ()) {
-					var result = GetElementAt (context, element, x, y);
-					if (result != null)
-						return result;
-				}
+				return GetElementAt (context, rootElement, x, y);
 			}
-			return null;
 		}
 
 		protected override bool OnMotionNotifyEvent (Gdk.EventMotion evnt)
 		{
-			double dx = (int) evnt.X;
-			double dy = (int) evnt.Y;
+			double dx = evnt.X;
+			double dy = evnt.Y;
 			if (MouseGrabElement != null) {
 				if (MouseGrabElement.Draggable && evnt.State.HasFlag (Gdk.ModifierType.Button1Mask)) {
 					if (!dragging && (Math.Abs (DragStart.X - dx) > 5 || Math.Abs (DragStart.Y - dy) > 5))
 						dragging = true;
 
 					if (dragging) {
-						MouseGrabElement.X = dx + DragOffset.X;
-						MouseGrabElement.Y = dy + DragOffset.Y;
+						MouseGrabElement.Parent.InverseTransform.TransformPoint (ref dx, ref dy);
+						MouseGrabElement.X = dx - DragOffset.X;
+						MouseGrabElement.Y = dy - DragOffset.Y;
 						QueueDraw ();
 					}
 				} else {
-					MouseGrabElement.InverseTransform.TransformPoint (ref dx, ref dy);
-					MouseGrabElement.MouseMotion ((int) dx, (int) dy, evnt.State);
+					var point = TransformPoint (MouseGrabElement, evnt.X, evnt.Y);
+					MouseGrabElement.MouseMotion (point.X, point.Y, evnt.State);
 				}
 			} else {
-				HoveredElement = GetElementAt ((int)evnt.X, (int)evnt.Y);
+				HoveredElement = GetElementAt (evnt.X, evnt.Y);
 				if (HoveredElement != null) {
-					HoveredElement.InverseTransform.TransformPoint (ref dx, ref dy);
-					HoveredElement.MouseMotion ((int) dx, (int) dy, evnt.State);
+					var point = TransformPoint (HoveredElement, evnt.X, evnt.Y);
+					HoveredElement.MouseMotion (point.X, point.Y, evnt.State);
 				}
 			}
 
@@ -416,12 +404,10 @@ namespace XamarinCanvas
 			return base.OnLeaveNotifyEvent (evnt);
 		}
 
-		Gdk.Point TransformPoint (CanvasElement element, int x, int y)
+		Cairo.PointD TransformPoint (CanvasElement element, double x, double y)
 		{
-			double dx = x;
-			double dy = y;
-			element.InverseTransform.TransformPoint (ref dx, ref dy);
-			return new Gdk.Point ((int)dx, (int)dy);
+			element.InverseTransform.TransformPoint (ref x, ref y);
+			return new Cairo.PointD (x, y);
 		}
 
 		protected override bool OnButtonPressEvent (Gdk.EventButton evnt)
@@ -436,7 +422,11 @@ namespace XamarinCanvas
 			if (MouseGrabElement != null) {
 				MouseGrabElement.CancelAnimations ();
 				DragStart = new Gdk.Point (x, y);
-				DragOffset = new Gdk.Point ((int)MouseGrabElement.X - x, (int)MouseGrabElement.Y - y);
+
+				double dx = x;
+				double dy = y;
+				MouseGrabElement.Parent.InverseTransform.TransformPoint (ref dx, ref dy);
+				DragOffset = new Gdk.Point ((int) (dx - MouseGrabElement.X), (int) (dy - MouseGrabElement.Y));
 
 				var transformedPoint = TransformPoint (MouseGrabElement, x, y);
 				MouseGrabElement.ButtonPress (transformedPoint.X, transformedPoint.Y, evnt.Button, evnt.State);
@@ -508,8 +498,7 @@ namespace XamarinCanvas
 			context.Color = new Cairo.Color (0, 0, 0);
 			context.Paint ();
 
-			foreach (var element in elements)
-				RenderElement (context, element);
+			RenderElement (context, rootElement);
 		}
 
 		protected override bool OnExposeEvent (Gdk.EventExpose evnt)

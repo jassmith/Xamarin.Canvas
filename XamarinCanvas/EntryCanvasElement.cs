@@ -51,14 +51,18 @@ namespace XamarinCanvas
 			}
 		}
 
+		public int Width { get; set; }
+		public int Height { get; set; }
+
 		Gtk.IMContext imContext;
 		public EntryCanvasElement ()
 		{
 			CurrentEntry = "";
 			CaretOffset = 0;
 			CaretHighlightOffset = -1;
-			
-			//Draggable = true;
+
+			Width = 200;
+			Height = 30;
 			imContext = new IMMulticontext ();
 			imContext.PreeditChanged += HandlePreeditChanged;
 			imContext.PreeditStart += HandlePreeditStart;
@@ -182,7 +186,7 @@ namespace XamarinCanvas
 		int PositionToOffset (int x, int y)
 		{
 			x -= 10;
-			y = 5;
+			y = 1;
 			using (Pango.Layout layout = GetLayout ()) {
 				int index, trailing;
 				if (layout.XyToIndex (Pango.Units.FromPixels (x), Pango.Units.FromPixels (y), out index, out trailing)) {
@@ -197,7 +201,7 @@ namespace XamarinCanvas
 
 		protected override void OnLayoutOutline (Cairo.Context context)
 		{
-			context.Rectangle (0, -20, 200, 40);
+			context.Rectangle (0, 0, Width, Height);
 		}
 
 		protected override void OnRender (Cairo.Context context)
@@ -212,7 +216,7 @@ namespace XamarinCanvas
 
 
 				int textX = 10;
-				int textY = -h / 2;
+				int textY = (Height - h) / 2;
 
 
 				if (CaretHighlightOffset != -1) {
@@ -360,18 +364,18 @@ namespace XamarinCanvas
 			}
 		}
 
-		protected override void OnMouseMotion (int x, int y, Gdk.ModifierType state)
+		protected override void OnMouseMotion (double x, double y, Gdk.ModifierType state)
 		{
 			if (state.HasFlag (Gdk.ModifierType.Button1Mask)) {
-				HighlightTo (x, y);
+				HighlightTo ((int)x, (int)y);
 				QueueDraw ();
 			}
 		}
 
-		protected override void OnButtonPress (int x, int y, uint button, Gdk.ModifierType state)
+		protected override void OnButtonPress (double x, double y, uint button, Gdk.ModifierType state)
 		{
 			if (button == 1) {
-				int location = PositionToOffset (x, y);
+				int location = PositionToOffset ((int)x, (int)y);
 				if (location >= 0) {
 					CaretOffset = location;
 					CaretHighlightOffset = -1;
@@ -392,7 +396,7 @@ namespace XamarinCanvas
 			return result;
 		}
 
-		protected override void OnClicked (int x, int y, Gdk.ModifierType state)
+		protected override void OnClicked (double x, double y, Gdk.ModifierType state)
 		{
 			 if (state.HasFlag (Gdk.ModifierType.Button3Mask)) {
 				Random r = new Random ();

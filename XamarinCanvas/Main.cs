@@ -64,7 +64,7 @@ namespace XamarinCanvas
 
 		protected override void OnLayoutOutline (Cairo.Context context)
 		{
-			context.Rectangle (-100, -100, 200, 200);
+			context.Rectangle (0, 0, 200, 200);
 		}
 
 		protected override void OnRender (Cairo.Context context)
@@ -82,9 +82,8 @@ namespace XamarinCanvas
 		{
 		}
 
-		protected override void OnMouseMotion (int x, int y, Gdk.ModifierType state)
+		protected override void OnMouseMotion (double x, double y, Gdk.ModifierType state)
 		{
-
 		}
 
 		protected override void OnFocusIn ()
@@ -97,7 +96,7 @@ namespace XamarinCanvas
 
 		}
 
-		protected override void OnClicked (int x, int y, Gdk.ModifierType state)
+		protected override void OnClicked (double x, double y, Gdk.ModifierType state)
 		{
 			Random r = new Random ();
 			
@@ -140,14 +139,13 @@ namespace XamarinCanvas
 			element.Draggable = true;
 			group.Add (element);
 
-			element = new BoxCanvasElement (new Cairo.Color (r1.NextDouble (), r1.NextDouble (), r1.NextDouble ()));
+			element = new EntryCanvasElement ();
 			element.X = 120;
 			element.Y = -120;
-			element.Draggable = true;
 			group.Add (element);
 
 			canvas.AddElement (group);
-			group.Rotation = Math.PI / 4;
+//			group.RotateTo (Math.PI * 40, 200000);
 			group.X = 400;
 			group.Y = 400;
 
