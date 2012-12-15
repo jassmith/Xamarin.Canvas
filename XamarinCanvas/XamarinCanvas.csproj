@@ -61,6 +61,12 @@
     <EmbeddedResource Include="gtk-gui\gui.stetic">
       <LogicalName>gui.stetic</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="icons\go-next-ltr.png">
+      <LogicalName>go-next-ltr.png</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icons\go-previous-ltr.png">
+      <LogicalName>go-previous-ltr.png</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="gtk-gui\generated.cs" />
@@ -70,6 +76,15 @@
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Canvas.cs" />
     <Compile Include="EntryCanvasElement.cs" />
+    <Compile Include="GroupCanvasElement.cs" />
+    <Compile Include="BoxCanvasElement.cs" />
+    <Compile Include="LabelCanvasElement.cs" />
+    <Compile Include="CanvasElement.cs" />
+    <Compile Include="ButtonCanvasElement.cs" />
+    <Compile Include="ImageCanvasElement.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <Folder Include="icons\" />
+  </ItemGroup>
 </Project>

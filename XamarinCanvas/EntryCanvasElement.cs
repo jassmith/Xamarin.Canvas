@@ -51,8 +51,7 @@ namespace XamarinCanvas
 			}
 		}
 
-		public int Width { get; set; }
-		public int Height { get; set; }
+		public event EventHandler Activated;
 
 		Gtk.IMContext imContext;
 		public EntryCanvasElement ()
@@ -61,8 +60,7 @@ namespace XamarinCanvas
 			CaretOffset = 0;
 			CaretHighlightOffset = -1;
 
-			Width = 200;
-			Height = 30;
+			SetSize (200, 30);
 			imContext = new IMMulticontext ();
 			imContext.PreeditChanged += HandlePreeditChanged;
 			imContext.PreeditStart += HandlePreeditStart;
@@ -216,7 +214,7 @@ namespace XamarinCanvas
 
 
 				int textX = 10;
-				int textY = (Height - h) / 2;
+				int textY = ((int)Height - h) / 2;
 
 
 				if (CaretHighlightOffset != -1) {
@@ -321,6 +319,10 @@ namespace XamarinCanvas
 					HighlightAll ();
 				}
 				break;
+			case Gdk.Key.ISO_Enter:
+			case Gdk.Key.KP_Enter:
+					OnActivated ();
+				break;
 			}
 
 			imContext.FilterKeypress (evnt);
@@ -408,6 +410,12 @@ namespace XamarinCanvas
 				         1000, Easing.CubicInOut);
 				ScaleTo ((0.1 + r.NextDouble ()) * 3, 1000, Easing.BounceOut);
 			}
+		}
+
+		void OnActivated ()
+		{
+			if (Activated != null)
+				Activated (this, EventArgs.Empty);
 		}
 	}
 	

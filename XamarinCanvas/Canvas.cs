@@ -9,230 +9,6 @@ using MonoDevelop.Ide.Gui;
 
 namespace XamarinCanvas
 {
-	public abstract class CanvasElement : IComparable<CanvasElement>, Animatable
-	{
-		public bool InputTransparent { get; set; }
-		public bool Sensative { get; set; }
-		public bool Draggable { get; set; }
-		public bool CanFocus { get; set; }
-		public bool HasFocus { get; private set; }
-
-		public double X { get; set; }
-		public double Y { get; set; }
-		public double Rotation { get; set; }
-		public double Scale { get; set; }
-		public double Depth { get; set; }
-
-		internal Cairo.Matrix Transform { get {
-				var result = new Cairo.Matrix ();
-				result.InitIdentity ();
-				result.Translate (X, Y);
-				result.Rotate (Rotation);
-				result.Scale (Scale, Scale);
-
-				if (Parent != null)
-					result.Multiply (Parent.Transform);
-
-				return result;
-			}
-		}
-
-		internal Cairo.Matrix InverseTransform { get {
-				var result = Transform;
-				result.Invert ();
-				return result;
-			}
-		}
-
-
-		public virtual IEnumerable<CanvasElement> Children {
-			get {
-				return Enumerable.Empty<CanvasElement> ();
-			}
-		}
-
-		public CanvasElement Parent { get; set; }
-
-		Canvas canvas;
-		public Canvas Canvas {
-			get {
-				if (canvas == null && Parent != null)
-					return Parent.Canvas;
-				return canvas;
-			}
-			set {
-				canvas = value;
-			}
-		}
-
-		protected CanvasElement ()
-		{
-			Scale = 1;
-			CanFocus = true;
-		}
-
-		public void LayoutOutline (Cairo.Context context)
-		{
-			OnLayoutOutline (context);
-		}
-
-		public void Render (Cairo.Context context)
-		{
-			OnRender (context);
-		}
-
-		public void MouseIn ()
-		{
-			OnMouseIn ();
-		}
-
-		public void MouseOut ()
-		{
-			OnMouseOut ();
-		}
-
-		public void MouseMotion (double x, double y, Gdk.ModifierType state)
-		{
-			OnMouseMotion (x, y, state);
-		}
-
-		public void ButtonPress (double x, double y, uint button, Gdk.ModifierType state) 
-		{
-			OnButtonPress (x, y, button, state);
-		}
-
-		public void ButtonRelease (double x, double y, uint button, Gdk.ModifierType state) 
-		{
-			OnButtonRelease (x, y, button, state);
-		}
-
-		public void FocusIn ()
-		{
-			HasFocus = true;
-			OnFocusIn ();
-		}
-
-		public void FocusOut ()
-		{
-			HasFocus = false;
-			OnFocusOut ();
-		}
-
-		public void Clicked (double x, double y, Gdk.ModifierType state)
-		{
-			OnClicked (x, y, state);
-		}
-
-		public void KeyPress (Gdk.EventKey evnt)
-		{
-			OnKeyPress (evnt);
-		}
-
-		public void KeyRelease (Gdk.EventKey evnt)
-		{
-			OnKeyRelease (evnt);
-		}
-
-		private Cairo.PointD GetPoint(double t, Cairo.PointD p0, Cairo.PointD p1, Cairo.PointD p2, Cairo.PointD p3)
-		{
-			double cx = 3 * (p1.X - p0.X);
-			double cy = 3 * (p1.Y - p0.Y);
-			
-			double bx = 3 * (p2.X - p1.X) - cx;
-			double by = 3 * (p2.Y - p1.Y) - cy;
-			
-			double ax = p3.X - p0.X - cx - bx;
-			double ay = p3.Y - p0.Y - cy - by;
-			
-			double Cube = t * t * t;
-			double Square = t * t;
-			
-			double resX = (ax * Cube) + (bx * Square) + (cx * t) + p0.X;
-			double resY = (ay * Cube) + (by * Square) + (cy * t) + p0.Y;
-			
-			return new Cairo.PointD(resX, resY);
-		}
-
-		public void CurveTo (double x1, double y1, double x2, double y2, double x3, double y3, uint length = 250, Func<float, float> easing = null)
-		{
-			if (easing == null)
-				easing = Easing.Linear;
-			Cairo.PointD start = new Cairo.PointD (X, Y);
-			Cairo.PointD p1 = new Cairo.PointD (x1, y1);
-			Cairo.PointD p2 = new Cairo.PointD (x2, y2);
-			Cairo.PointD end = new Cairo.PointD (x3, y3);
-			new Animation (f => {
-				var position = GetPoint (f, start, p1, p2, end);
-				X = position.X;
-				Y = position.Y;
-			}, 0, 1, easing)
-				.Commit (this, "MoveTo", 16, length);
-		}
-
-		public void MoveTo (double x, double y, uint length = 250, Func<float, float> easing = null)
-		{
-			if (easing == null)
-				easing = Easing.Linear;
-			new Animation ()
-				.Insert (0, 1, new Animation (f => X = f, (float)X, (float)x, easing))
-				.Insert (0, 1, new Animation (f => Y = f, (float)Y, (float)y, easing))
-				.Commit (this, "MoveTo", 16, length);
-		}
-
-		public void RotateTo (double roatation, uint length = 250, Func<float, float> easing = null)
-		{
-			if (easing == null)
-				easing = Easing.Linear;
-			new Animation (f => Rotation = f, (float)Rotation, (float)roatation, easing)
-				.Commit (this, "RotateTo", 16, length);
-		}
-
-		public void ScaleTo (double scale, uint length = 250, Func<float, float> easing = null)
-		{
-			if (easing == null)
-				easing = Easing.Linear;
-			new Animation (f => Scale = f, (float)Scale, (float)scale, easing)
-				.Commit (this, "ScaleTo", 16, length);
-		}
-
-		public void CancelAnimations ()
-		{
-			// Fixme : needs to abort all animations
-			this.AbortAnimation ("MoveTo");
-			this.AbortAnimation ("RotateTo");
-			this.AbortAnimation ("ScaleTo");
-		}
-
-		protected virtual void OnMouseIn () {}
-		protected virtual void OnMouseOut () {}
-		protected virtual void OnMouseMotion (double x, double y, Gdk.ModifierType state) {}
-		protected virtual void OnButtonPress (double x, double y, uint button, Gdk.ModifierType state) {}
-		protected virtual void OnButtonRelease (double x, double y, uint button, Gdk.ModifierType state) {}
-		protected virtual void OnClicked (double x, double y, Gdk.ModifierType state) {}
-		protected virtual void OnFocusIn () {}
-		protected virtual void OnFocusOut () {}
-		protected virtual void OnKeyPress (Gdk.EventKey evnt) {}
-		protected virtual void OnKeyRelease (Gdk.EventKey evnt) {}
-
-		protected abstract void OnLayoutOutline (Cairo.Context context);
-		protected abstract void OnRender (Cairo.Context context);
-
-		public void QueueDraw ()
-		{
-			if (Canvas != null) {
-				Canvas.ChildNeedDraw ();
-			}
-		}
-
-		#region IComparable implementation
-
-		public int CompareTo (CanvasElement other)
-		{
-			return Depth.CompareTo (other.Depth);
-		}
-
-		#endregion
-	}
 
 	public class Canvas : Gtk.EventBox, Animatable
 	{
@@ -328,16 +104,19 @@ namespace XamarinCanvas
 		{
 			QueueDraw ();
 			if (tracker.Hovered)
-				HoveredElement = GetElementAt (tracker.MousePosition.X, tracker.MousePosition.Y);
+				HoveredElement = GetInputElementAt (tracker.MousePosition.X, tracker.MousePosition.Y);
 		}
 
-		CanvasElement GetElementAt (Cairo.Context context, CanvasElement root, double x, double y)
+		CanvasElement GetInputElementAt (Cairo.Context context, CanvasElement root, double x, double y)
 		{
 			foreach (var element in root.Children.Reverse ()) {
-				var result = GetElementAt (context, element, x, y);
+				var result = GetInputElementAt (context, element, x, y);
 				if (result != null)
 					return result;
 			}
+
+			if (root.InputTransparent)
+				return null;
 
 			context.Save ();
 			root.LayoutOutline (context);
@@ -356,10 +135,13 @@ namespace XamarinCanvas
 			return null;
 		}
 
-		CanvasElement GetElementAt (double x, double y)
+		CanvasElement GetInputElementAt (double x, double y)
 		{
 			using (var context = Gdk.CairoHelper.Create (GdkWindow)) {
-				return GetElementAt (context, rootElement, x, y);
+				var result = GetInputElementAt (context, rootElement, x, y);
+				if (result == null)
+					return result;
+				return result.Sensative ? result : null;
 			}
 		}
 
@@ -383,7 +165,7 @@ namespace XamarinCanvas
 					MouseGrabElement.MouseMotion (point.X, point.Y, evnt.State);
 				}
 			} else {
-				HoveredElement = GetElementAt (evnt.X, evnt.Y);
+				HoveredElement = GetInputElementAt (evnt.X, evnt.Y);
 				if (HoveredElement != null) {
 					var point = TransformPoint (HoveredElement, evnt.X, evnt.Y);
 					HoveredElement.MouseMotion (point.X, point.Y, evnt.State);
@@ -414,7 +196,7 @@ namespace XamarinCanvas
 		{
 			int x = (int)evnt.X;
 			int y = (int)evnt.Y;
-			var element = GetElementAt (x, y); 
+			var element = GetInputElementAt (x, y); 
 
 			HasFocus = true;
 
@@ -439,14 +221,19 @@ namespace XamarinCanvas
 		{
 			int x = (int)evnt.X;
 			int y = (int)evnt.Y;
-			var element = GetElementAt (x, y);
-			if (element != null && element == MouseGrabElement && !dragging) {
-				var point = TransformPoint (element, x, y);
-				element.ButtonRelease (point.X, point.Y, evnt.Button, evnt.State);
-				element.Clicked (point.X, point.Y, evnt.State);
-				if (element.CanFocus)
-					FocusedElement = element;
+
+			if (MouseGrabElement != null) {
+				var element = GetInputElementAt (x, y);
+				var point = TransformPoint (MouseGrabElement, x, y);
+				MouseGrabElement.ButtonRelease (point.X, point.Y, evnt.Button, evnt.State);
+
+				if (element == MouseGrabElement && !dragging) {
+					element.Clicked (point.X, point.Y, evnt.State);
+					if (element.CanFocus)
+						FocusedElement = element;
+				}
 			}
+
 			dragging = false;
 			MouseGrabElement = null;
 			return true;
@@ -483,20 +270,28 @@ namespace XamarinCanvas
 
 		void RenderElement (Cairo.Context context, CanvasElement element)
 		{
+			element.Canvas = this;
+
 			context.Save ();
 			context.Transform (element.Transform);
 			element.Render (context);
 			context.Restore ();
 
+			context.Save ();
+			element.PrepChildRender (context);
 			if (element.Children != null)
 				foreach (var child in element.Children)
 					RenderElement (context, child);
+			context.Restore ();
+
 		}
 		
 		void Paint (Cairo.Context context)
 		{
-			context.Color = new Cairo.Color (0, 0, 0);
+			context.Operator = Cairo.Operator.Source;
+			context.Color = new Cairo.Color (0, 0, 0, 0);
 			context.Paint ();
+			context.Operator = Cairo.Operator.Over;
 
 			RenderElement (context, rootElement);
 		}
