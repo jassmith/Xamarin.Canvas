@@ -20,6 +20,8 @@ namespace XamarinCanvas
 
 		Cairo.Color Color { get; set; }
 
+		Gdk.Size pixelSize;
+
 		string text;
 		public string Text {
 			get {
@@ -57,20 +59,19 @@ namespace XamarinCanvas
 		protected override void OnLayoutOutline (Cairo.Context context)
 		{
 			if (ClipInputToTextExtents) {
-				using (Pango.Layout layout = GetLayout ()) {
-					layout.Width = Pango.Units.FromPixels ((int)Width);
-					
-					int w, h;
-					layout.GetPixelSize (out w, out h);
-					
-					int x = (int)Width - w;
-					x = (int) (x * XAlign);
-					
-					int y = (int)Height - h;
-					y = (int) (y * YAlign);
-					
-					context.Rectangle (x, y, w, h);
-				}
+				Pango.Layout layout = GetLayout ();
+				layout.Width = Pango.Units.FromPixels ((int)Width);
+				
+				int w, h;
+				layout.GetPixelSize (out w, out h);
+				
+				int x = (int)Width - w;
+				x = (int) (x * XAlign);
+				
+				int y = (int)Height - h;
+				y = (int) (y * YAlign);
+				
+				context.Rectangle (x, y, w, h);
 			} else {
 				context.Rectangle (0, 0, Width, Height);
 			}
@@ -82,52 +83,51 @@ namespace XamarinCanvas
 			if (Canvas == null)
 				return;
 
-			int finalWidth, finalHeight;
-			if (WidthRequest >= 0 && HeightRequest >= 0)
-			{
-				finalWidth = (int)WidthRequest;
-				finalHeight = (int)HeightRequest;
-			} else {
-				using (Pango.Layout layout = GetLayout ()) {
-					int w, h;
-					layout.GetPixelSize (out w, out h);
-					finalWidth = WidthRequest >= 0 ? (int)WidthRequest : w;
-					finalHeight = HeightRequest >= 0 ? (int)HeightRequest : h;
-				}
+			if (cachedLayout != null) {
+				cachedLayout.Dispose ();
+				cachedLayout = null;
 			}
-			SetSize (finalWidth, finalHeight);
+
+			int w, h;
+			GetLayout ().GetPixelSize (out w, out h);
+			SetPreferedSize (w, h);
+
+			pixelSize = new Gdk.Size (w, h);
 		}
 
 		protected override void OnRender (Cairo.Context context)
 		{
-			using (Pango.Layout layout = GetLayout ()) {
-				if (Width != -1)
-					layout.Width = Pango.Units.FromPixels ((int)Width);
+			Pango.Layout layout = GetLayout ();
+			layout.Width = Pango.Units.FromPixels ((int)Width);
 
-				int w, h;
-				layout.GetPixelSize (out w, out h);
+			int w = pixelSize.Width;
+			int h = pixelSize.Height;
 
-				int x = Width == -1 ? 0 : (int)Width - w;
-				x = (int) (x * XAlign);
+			int x = (int)Width - w;
+			x = (int) (x * XAlign);
 
-				int y = Width == -1 ? 0 : (int)Height - h;
-				y = (int) (y * YAlign);
+			int y = (int)Height - h;
+			y = (int) (y * YAlign);
 
-				context.MoveTo (x, y);
-				context.Color = Color;
-				Pango.CairoHelper.ShowLayout (context, layout);
-			}
+			context.MoveTo (x, y);
+			context.Color = Color.MultiplyAlpha (Opacity);
+			Pango.CairoHelper.ShowLayout (context, layout);
+
+			base.OnRender (context);
 		}
 
+		Pango.Layout cachedLayout;
 		Pango.Layout GetLayout ()
 		{
-			Pango.Layout result = new Pango.Layout (Canvas.PangoContext);
-			if (Markup != null) {
-				result.SetMarkup (Markup);
-			} else if (Text != null) {
-				result.SetText (Text);
+			if (cachedLayout == null) {
+				cachedLayout = new Pango.Layout (Canvas.PangoContext);
+				if (Markup != null) {
+					cachedLayout.SetMarkup (Markup);
+				} else if (Text != null) {
+					cachedLayout.SetText (Text);
+				}
 			}
-			return result;
+			return cachedLayout;
 		}
 	}
 	

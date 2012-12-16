@@ -14,6 +14,7 @@ namespace XamarinCanvas
 	public class ImageCanvasElement : CanvasElement
 	{
 		Gdk.Pixbuf pbuf;
+		SurfaceWrapper surfaceCache;
 
 		public ImageCanvasElement (Gdk.Pixbuf pbuf)
 		{
@@ -23,7 +24,10 @@ namespace XamarinCanvas
 		public void SetImage (Gdk.Pixbuf pbuf)
 		{
 			this.pbuf = pbuf;
-			SetSize (pbuf.Width, pbuf.Height);
+			SetPreferedSize (pbuf.Width, pbuf.Height);
+			if (surfaceCache != null)
+				surfaceCache.Dispose ();
+			surfaceCache = null;
 		}
 
 		protected override void OnLayoutOutline (Cairo.Context context)
@@ -33,8 +37,18 @@ namespace XamarinCanvas
 
 		protected override void OnRender (Cairo.Context context)
 		{
-			Gdk.CairoHelper.SetSourcePixbuf (context, pbuf, 0, 0);
-			context.Paint ();
+			if (surfaceCache == null) {
+				// will improve with CGLayer surfaces
+				surfaceCache = new SurfaceWrapper (context, pbuf);
+			}
+			context.SetSourceSurface (surfaceCache.Surface, 0, 0);
+			double opacity = Opacity;
+			if (opacity == 1)
+				context.Paint ();
+			else
+				context.PaintWithAlpha (Opacity);
+
+			base.OnRender (context);
 		}
 	}
 	

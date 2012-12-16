@@ -60,7 +60,6 @@ namespace XamarinCanvas
 			CaretOffset = 0;
 			CaretHighlightOffset = -1;
 
-			SetSize (200, 30);
 			imContext = new IMMulticontext ();
 			imContext.PreeditChanged += HandlePreeditChanged;
 			imContext.PreeditStart += HandlePreeditStart;
@@ -68,6 +67,8 @@ namespace XamarinCanvas
 			imContext.RetrieveSurrounding += HandleRetrieveSurrounding;
 			imContext.SurroundingDeleted += HandleSurroundingDeleted;
 			imContext.Commit += HandleCommit;
+
+			SetPreferedSize (200, 30);
 		}
 
 		void HighlightTo (int x, int y)
@@ -205,7 +206,7 @@ namespace XamarinCanvas
 		protected override void OnRender (Cairo.Context context)
 		{
 			OnLayoutOutline (context);
-			context.Color = new Cairo.Color (1, 1, 1);
+			context.Color = new Cairo.Color (1, 1, 1, Opacity);
 			context.Fill ();
 
 			using (var layout = GetLayout ()) {
@@ -225,22 +226,24 @@ namespace XamarinCanvas
 					layout.GetCursorPos (Math.Min (CaretOffset, CaretHighlightOffset), out leftStrongRect, out leftRect);
 
 					context.Rectangle (textX + Pango.Units.ToPixels (leftRect.X), textY + Pango.Units.ToPixels (leftRect.Y), Pango.Units.ToPixels (rightRect.X + rightRect.Width - leftRect.X), Pango.Units.ToPixels (leftRect.Height));
-					context.Color = new Cairo.Color (0.8, 0.9, 1);
+					context.Color = new Cairo.Color (0.8, 0.9, 1, Opacity);
 					context.Fill ();
 				}
 
 				context.MoveTo (textX, textY);
-				context.Color = new Cairo.Color (0, 0, 0);
+				context.Color = new Cairo.Color (0, 0, 0, Opacity);
 				Pango.CairoHelper.ShowLayout (context, layout);
 
 				if (CaretHighlightOffset == -1 && drawCaret) {
 					Pango.Rectangle strongRect, weakRect;
 					layout.GetCursorPos (CaretOffset, out strongRect, out weakRect);
 					context.Rectangle (textX + Pango.Units.ToPixels (weakRect.X), textY + Pango.Units.ToPixels (weakRect.Y), 1, Pango.Units.ToPixels (weakRect.Height));
-					context.Color = new Cairo.Color (0, 0, 0);
+					context.Color = new Cairo.Color (0, 0, 0, Opacity);
 					context.Fill ();
 				}
 			}
+
+			base.OnRender (context);
 		}
 
 		uint blinkHandler;

@@ -20,3 +20,9 @@ XamarinCanvas/bin/Debug/MonoDevelop.Projects.Formats.MSBuild.exe.config
 XamarinCanvas/gtk-gui/generated.cs
 
 XamarinCanvas/gtk-gui/MainWindow.cs
+
+*.config
+
+*.mlpd
+
+XamarinCanvas/icons/.DS_Store

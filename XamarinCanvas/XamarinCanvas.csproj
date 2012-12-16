@@ -67,6 +67,9 @@
     <EmbeddedResource Include="icons\go-previous-ltr.png">
       <LogicalName>go-previous-ltr.png</LogicalName>
     </EmbeddedResource>
+    <EmbeddedResource Include="icons\searchbox-search-16.png">
+      <LogicalName>searchbox-search-16.png</LogicalName>
+    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="gtk-gui\generated.cs" />

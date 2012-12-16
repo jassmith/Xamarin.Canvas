@@ -53,70 +53,173 @@ namespace XamarinCanvas
 			}
 		}
 
-		public double X { get; set; }
-		public double Y { get; set; }
-		public double AnchorX { get; set; }
-		public double AnchorY { get; set; }
+		double x;
+		public double X {
+			get { return x; }
+			set {
+				x = value;
+				transformValid = false;
+			}
+		}
+
+		double y;
+		public double Y {
+			get {
+				return y;
+			}
+			set {
+				y = value;
+				transformValid = false;
+			}
+		}
+
+		double anchorX;
+		public double AnchorX {
+			get {
+				return anchorX;
+			}
+			set {
+				anchorX = value;
+				transformValid = false;
+			}
+		}
+
+		double anchorY;
+		public double AnchorY {
+			get {
+				return anchorY;
+			}
+			set {
+				anchorY = value;
+				transformValid = false;
+			}
+		}
+
 		public double Width { get; private set; }
 		public double Height { get; private set; }
-		public double Rotation { get; set; }
-		public double Scale { get; set; }
+
+		double rotation;
+		public double Rotation {
+			get {
+				return rotation;
+			}
+			set {
+				rotation = value;
+				transformValid = false;
+			}
+		}
+
+		double scale;
+		public double Scale {
+			get {
+				return scale;
+			}
+			set {
+				scale = value;
+				transformValid = false;
+			}
+		}
+
 		public double Depth { get; set; }
 
+		double opacity;
+		public double Opacity {
+			get {
+				double result = opacity;
+				if (Parent != null)
+					result *= Parent.Opacity;
+
+				return result;
+			}
+			set {
+				opacity = value;
+			}
+		}
+
+		/// <summary>
+		/// User set width override for an element
+		/// </summary>
 		public double WidthRequest { get; set; }
+
+		/// <summary>
+		/// User set height override for an element
+		/// </summary>
 		public double HeightRequest { get; set; }
+
+		/// <summary>
+		/// Elements prefered allocation accounting for user set width request
+		/// </summary>
+		double preferedWidth;
+		public double PreferedWidth {
+			get {
+				return WidthRequest == -1 ? preferedWidth : WidthRequest;
+			}
+			private set {
+				preferedWidth = value;
+			}
+		}
+
+		/// <summary>
+		/// Elements prefered allocationsaccounting for user set height request
+		/// </summary>
+		double preferedHeight;
+		public double PreferedHeight {
+			get {
+				return HeightRequest == -1 ? preferedHeight : HeightRequest;
+			}
+			private set {
+				preferedHeight = value;
+			}
+		}
 
 		public event EventHandler ClickEvent;
 		public event EventHandler CanvasSet;
 
 		public event EventHandler<RenderEventArgs> RenderEvent;
 		public event EventHandler<LayoutEventArgs> LayoutEvent;
-		public event EventHandler<RenderEventArgs> PrepChildRenderEvent;
 
 		public event EventHandler SizeChanged;
+		public event EventHandler PreferedSizeChanged;
 
-		internal Cairo.Matrix GroupTransform { get {
-				var result = new Cairo.Matrix ();
-				result.InitIdentity ();
-				result.Translate (X, Y);
-				result.Translate (AnchorX, AnchorY);
-				result.Rotate (Rotation);
-				result.Scale (Scale, Scale);
-				result.Translate (-AnchorX, -AnchorY);
-
-				if (Parent != null)
-					result.Multiply (Parent.GroupTransform);
-
-				return result;
-			}
-		}
-
-		internal Cairo.Matrix Transform { get {
-				var result = new Cairo.Matrix ();
-				result.InitIdentity ();
-				result.Translate (X, Y);
-				result.Translate (AnchorX, AnchorY);
-				result.Rotate (Rotation);
-				result.Scale (Scale, Scale);
-				result.Translate (-AnchorX, -AnchorY);
-				
-				if (Parent != null)
-					result.Multiply (Parent.GroupTransform);
-				
-				return result;
-			}
-		}
-
-		internal Cairo.Matrix InverseTransform { get {
-				var result = Transform;
-				result.Invert ();
-				return result;
-			}
-		}
-
-		public virtual IEnumerable<CanvasElement> Children {
+		bool transformValid;
+		Cairo.Matrix transform;
+		internal Cairo.Matrix Transform { 
 			get {
-				return Enumerable.Empty<CanvasElement> ();
+				if (!transformValid) {
+					transform.InitIdentity ();
+					transform.Translate (X + AnchorX, Y + AnchorY);
+					transform.Rotate (Rotation);
+					transform.Scale (Scale, Scale);
+					transform.Translate (-AnchorX, -AnchorY);
+					transformValid = true;
+				}
+
+				return transform;
+			}
+		}
+
+		bool inverseValid;
+		Cairo.Matrix inverse;
+		internal Cairo.Matrix InverseTransform { get {
+//				if (!inverseValid) {
+					inverse.InitIdentity ();
+					inverse.Multiply (Transform);
+					
+					var parent = Parent;
+					while (parent != null) {
+						inverse.Multiply (parent.Transform);
+						parent = parent.Parent;
+					}
+					
+					inverse.Invert ();
+//				}
+				return inverse;
+			}
+		}
+
+		public virtual ReadOnlyCollection<CanvasElement> Children {
+			get {
+				return null;
 			}
 		}
 
@@ -140,11 +243,14 @@ namespace XamarinCanvas
 
 		public CanvasElement ()
 		{
+			opacity = 1;
 			Scale = 1;
 			WidthRequest = HeightRequest = -1;
 			Width = Height = -1;
 			CanFocus = true;
 			Sensative = true;
+			inverse = new Cairo.Matrix ();
+			transform = new Cairo.Matrix ();
 		}
 
 		public void LayoutOutline (Cairo.Context context)
@@ -159,16 +265,6 @@ namespace XamarinCanvas
 			OnRender (context);
 			if (RenderEvent != null)
 				RenderEvent (this, new RenderEventArgs (context));
-		}
-
-		/// <summary>
-		/// Rendering method called after a containers children have been rendered. Useful for unsetting clips/etc.
-		/// </summary>
-		public void PrepChildRender (Cairo.Context context)
-		{
-			OnPrepChildRender (context);
-			if (PrepChildRenderEvent != null)
-				PrepChildRenderEvent (this, new RenderEventArgs (context));
 		}
 
 		public void MouseIn ()
@@ -265,8 +361,26 @@ namespace XamarinCanvas
 				.Commit (this, "MoveTo", 16, length);
 		}
 
+		public void RelMoveTo (double dx, double dy, uint length = 250, Func<float, float> easing = null)
+		{
+			MoveTo (X + dx, Y + dy, length, easing);
+		}
+
+		public void RelRotateTo (double drotation, uint length = 250, Func<float, float> easing = null)
+		{
+			RotateTo (Rotation + drotation, length, easing);
+		}
+
+		public void RelScaleTo (double dscale, uint length = 250, Func<float, float> easing = null)
+		{
+			ScaleTo (Scale + dscale, length, easing);
+		}
+
 		public void MoveTo (double x, double y, uint length = 250, Func<float, float> easing = null)
 		{
+			if (x == X && y == Y)
+				return;
+
 			if (easing == null)
 				easing = Easing.Linear;
 			new Animation ()
@@ -291,6 +405,19 @@ namespace XamarinCanvas
 				.Commit (this, "ScaleTo", 16, length);
 		}
 
+		public void SizeTo (double width, double height, uint length = 250, Func<float, float> easing = null)
+		{
+			if (width == Width && height == Height)
+				return;
+			
+			if (easing == null)
+				easing = Easing.Linear;
+			new Animation ()
+				.Insert (0, 1, new Animation (f => Width = f, (float)Width, (float)width, easing))
+				.Insert (0, 1, new Animation (f => Height = f, (float)Height, (float)height, easing))
+				.Commit (this, "SizeTo", 16, length);
+		}
+
 		public void CancelAnimations ()
 		{
 			// Fixme : needs to abort all animations
@@ -310,6 +437,15 @@ namespace XamarinCanvas
 			QueueDraw ();
 		}
 
+		protected void SetPreferedSize (double width, double height)
+		{
+			PreferedWidth = width;
+			PreferedHeight = height;
+
+			if (PreferedSizeChanged != null)
+				PreferedSizeChanged (this, EventArgs.Empty);
+		}
+
 		void SizeAllocated (double width, double height)
 		{
 			OnSizeAllocated (width, height);
@@ -325,11 +461,23 @@ namespace XamarinCanvas
 		protected virtual void OnFocusOut () {}
 		protected virtual void OnKeyPress (Gdk.EventKey evnt) {}
 		protected virtual void OnKeyRelease (Gdk.EventKey evnt) {}
+		protected virtual void OnSizeRequested (ref double width, ref double height) {}
 		protected virtual void OnSizeAllocated (double width, double height) {}
 
 		protected virtual void OnLayoutOutline (Cairo.Context context) {}
-		protected virtual void OnRender (Cairo.Context context) {}
-		protected virtual void OnPrepChildRender (Cairo.Context context) {}
+
+		protected virtual void OnRender (Cairo.Context context) 
+		{	
+			if (Children == null)
+				return;
+			foreach (var child in Children) {
+				context.Save ();
+				child.Canvas = Canvas;
+				context.Transform (child.Transform);
+				child.Render (context);
+				context.Restore ();
+			}
+		}
 
 		public void QueueDraw ()
 		{

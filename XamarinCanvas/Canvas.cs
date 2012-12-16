@@ -100,19 +100,17 @@ namespace XamarinCanvas
 			QueueDraw ();
 		}
 
-		public void ChildNeedDraw ()
-		{
-			QueueDraw ();
-			if (tracker.Hovered)
-				HoveredElement = GetInputElementAt (tracker.MousePosition.X, tracker.MousePosition.Y);
-		}
-
 		CanvasElement GetInputElementAt (Cairo.Context context, CanvasElement root, double x, double y)
 		{
-			foreach (var element in root.Children.Reverse ()) {
-				var result = GetInputElementAt (context, element, x, y);
-				if (result != null)
-					return result;
+			var children = root.Children;
+
+			if (children != null) {
+				// Manual loop to avoid excessive creation of iterators
+				for (int i = children.Count - 1; i >= 0; i--) {
+					var result = GetInputElementAt (context, children[i], x, y);
+					if (result != null)
+						return result;
+				}
 			}
 
 			if (root.InputTransparent)
@@ -135,13 +133,18 @@ namespace XamarinCanvas
 			return null;
 		}
 
+		CanvasElement GetInputElementAt (Cairo.Context context, double x, double y)
+		{
+			var result = GetInputElementAt (context, rootElement, x, y);
+			if (result == null)
+				return result;
+			return result.Sensative ? result : null;
+		}
+
 		CanvasElement GetInputElementAt (double x, double y)
 		{
 			using (var context = Gdk.CairoHelper.Create (GdkWindow)) {
-				var result = GetInputElementAt (context, rootElement, x, y);
-				if (result == null)
-					return result;
-				return result.Sensative ? result : null;
+				return GetInputElementAt (context, x, y);
 			}
 		}
 
@@ -272,33 +275,36 @@ namespace XamarinCanvas
 		{
 			element.Canvas = this;
 
-			context.Save ();
 			context.Transform (element.Transform);
 			element.Render (context);
-			context.Restore ();
+		}
 
-			context.Save ();
-			element.PrepChildRender (context);
-			if (element.Children != null)
-				foreach (var child in element.Children)
-					RenderElement (context, child);
-			context.Restore ();
-
+		protected override void OnSizeAllocated (Gdk.Rectangle allocation)
+		{
+			rootElement.SetSize (allocation.Width, allocation.Height);
+			base.OnSizeAllocated (allocation);
 		}
 		
 		void Paint (Cairo.Context context)
 		{
 			context.Operator = Cairo.Operator.Source;
-			context.Color = new Cairo.Color (0, 0, 0, 0);
+			context.Color = new Cairo.Color (0.9, 0.9, 0.9, 1);
 			context.Paint ();
 			context.Operator = Cairo.Operator.Over;
 
 			RenderElement (context, rootElement);
 		}
 
+		public void ChildNeedDraw ()
+		{
+			QueueDraw ();
+		}
+
 		protected override bool OnExposeEvent (Gdk.EventExpose evnt)
 		{
 			using (var context = Gdk.CairoHelper.Create (GdkWindow)) {
+				if (tracker.Hovered)
+					HoveredElement = GetInputElementAt (context, tracker.MousePosition.X, tracker.MousePosition.Y);
 				Paint (context);
 			}
 			return true;
