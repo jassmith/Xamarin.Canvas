@@ -22,7 +22,7 @@ namespace XamarinCanvas
 			AnchorX = width / 2.0;
 			AnchorY = height / 2.0;
 
-			SetPreferedSize (200, 200);
+			SetPreferedSize (width, height);
 		}
 
 		protected override void OnLayoutOutline (Cairo.Context context)

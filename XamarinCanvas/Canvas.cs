@@ -14,8 +14,6 @@ namespace XamarinCanvas
 	{
 		GroupCanvasElement rootElement;
 
-		MouseTracker tracker;
-
 		CanvasElement hoveredElement;
 		CanvasElement HoveredElement {
 			get {
@@ -50,8 +48,8 @@ namespace XamarinCanvas
 				return mouseGrabElement;
 			}
 			set {
-				mouseGrabElement = value;
 				HoveredElement = value;
+				mouseGrabElement = value;
 			}
 		}
 
@@ -80,12 +78,12 @@ namespace XamarinCanvas
 		public Canvas ()
 		{
 			AppPaintable = true;
+			VisibleWindow = false;
 			CanFocus = true;
 			rootElement = new GroupCanvasElement ();
 			rootElement.Canvas = this;
 
 			AddEvents ((int)(Gdk.EventMask.AllEventsMask));
-			tracker = new MouseTracker (this);
 		}
 
 		public void AddElement (CanvasElement element)
@@ -100,8 +98,18 @@ namespace XamarinCanvas
 			QueueDraw ();
 		}
 
+		public void FocusElement (CanvasElement element)
+		{
+			if (element.CanFocus) {
+				FocusedElement = element;
+			}
+		}
+
 		CanvasElement GetInputElementAt (Cairo.Context context, CanvasElement root, double x, double y)
 		{
+			if (root.InputTransparent)
+				return null;
+
 			var children = root.Children;
 
 			if (children != null) {
@@ -113,17 +121,11 @@ namespace XamarinCanvas
 				}
 			}
 
-			if (root.InputTransparent)
-				return null;
-
 			context.Save ();
 			root.LayoutOutline (context);
+			var point = TransformPoint (root, x, y);
 			
-			double dx = x;
-			double dy = y;
-			root.InverseTransform.TransformPoint (ref dx, ref dy);
-			
-			if (context.InFill (dx, dy)) {
+			if (context.InFill (point.X, point.Y)) {
 				context.NewPath ();
 				context.Restore ();
 				return root;
@@ -158,9 +160,9 @@ namespace XamarinCanvas
 						dragging = true;
 
 					if (dragging) {
-						MouseGrabElement.Parent.InverseTransform.TransformPoint (ref dx, ref dy);
-						MouseGrabElement.X = dx - DragOffset.X;
-						MouseGrabElement.Y = dy - DragOffset.Y;
+						var point = TransformPoint (MouseGrabElement.Parent, dx, dy);
+						MouseGrabElement.X = point.X - DragOffset.X;
+						MouseGrabElement.Y = point.Y - DragOffset.Y;
 						QueueDraw ();
 					}
 				} else {
@@ -210,8 +212,8 @@ namespace XamarinCanvas
 
 				double dx = x;
 				double dy = y;
-				MouseGrabElement.Parent.InverseTransform.TransformPoint (ref dx, ref dy);
-				DragOffset = new Gdk.Point ((int) (dx - MouseGrabElement.X), (int) (dy - MouseGrabElement.Y));
+				var point = TransformPoint (MouseGrabElement.Parent, dx, dy);
+				DragOffset = new Gdk.Point ((int) (point.X - MouseGrabElement.X), (int) (point.Y - MouseGrabElement.Y));
 
 				var transformedPoint = TransformPoint (MouseGrabElement, x, y);
 				MouseGrabElement.ButtonPress (transformedPoint.X, transformedPoint.Y, evnt.Button, evnt.State);
@@ -261,14 +263,14 @@ namespace XamarinCanvas
 		{
 			if (FocusedElement != null)
 				FocusedElement.KeyPress (evnt);
-			return base.OnKeyPressEvent (evnt);
+			return true;
 		}
 
 		protected override bool OnKeyReleaseEvent (Gdk.EventKey evnt)
 		{
 			if (FocusedElement != null)
 				FocusedElement.KeyRelease (evnt);
-			return base.OnKeyReleaseEvent (evnt);
+			return true;
 		}
 
 		void RenderElement (Cairo.Context context, CanvasElement element)
@@ -287,11 +289,6 @@ namespace XamarinCanvas
 		
 		void Paint (Cairo.Context context)
 		{
-			context.Operator = Cairo.Operator.Source;
-			context.Color = new Cairo.Color (0.9, 0.9, 0.9, 1);
-			context.Paint ();
-			context.Operator = Cairo.Operator.Over;
-
 			RenderElement (context, rootElement);
 		}
 
@@ -302,9 +299,10 @@ namespace XamarinCanvas
 
 		protected override bool OnExposeEvent (Gdk.EventExpose evnt)
 		{
-			using (var context = Gdk.CairoHelper.Create (GdkWindow)) {
-				if (tracker.Hovered)
-					HoveredElement = GetInputElementAt (context, tracker.MousePosition.X, tracker.MousePosition.Y);
+			using (var context = Gdk.CairoHelper.Create (evnt.Window)) {
+				context.Translate (Allocation.X, Allocation.Y);
+				context.Rectangle (0, 0, Allocation.Width, Allocation.Height);
+				context.Clip ();
 				Paint (context);
 			}
 			return true;

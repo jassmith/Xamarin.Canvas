@@ -9,9 +9,16 @@ using MonoDevelop.Ide.Gui;
 
 namespace XamarinCanvas
 {
-	public class EntryCanvasElement : CanvasElement
+	public class EntryCanvasElement : GroupCanvasElement
 	{
 		bool drawCaret;
+		LabelCanvasElement preEditLabel;
+
+		public override Gdk.CursorType Cursor {
+			get {
+				return Gdk.CursorType.Xterm;
+			}
+		}
 
 		string currentEntry;
 		string CurrentEntry {
@@ -69,6 +76,30 @@ namespace XamarinCanvas
 			imContext.Commit += HandleCommit;
 
 			SetPreferedSize (200, 30);
+
+			preEditLabel = new LabelCanvasElement ("");
+			preEditLabel.YAlign = 0.5;
+			preEditLabel.Opacity = 0.5;
+			preEditLabel.InputTransparent = true;
+			Add (preEditLabel);
+		}
+
+		public void SetPreEditLabel (string label)
+		{
+			preEditLabel.Text = label;
+		}
+
+		void ShowPreEdit (bool show)
+		{
+			preEditLabel.MoveTo (show ? 10 : 30, 0, 300, Easing.CubicOut);
+			preEditLabel.FadeTo (show ? 0.5 : 0, 300);
+		}
+
+		protected override void OnSizeAllocated (double width, double height)
+		{
+			preEditLabel.X = 10;
+			preEditLabel.Y = 0;
+			preEditLabel.SetSize (Math.Max (0, width - 10), height);
 		}
 
 		void HighlightTo (int x, int y)
@@ -205,18 +236,13 @@ namespace XamarinCanvas
 
 		protected override void OnRender (Cairo.Context context)
 		{
-			OnLayoutOutline (context);
-			context.Color = new Cairo.Color (1, 1, 1, Opacity);
-			context.Fill ();
-
 			using (var layout = GetLayout ()) {
+
 				int w, h;
 				layout.GetPixelSize (out w, out h);
 
-
 				int textX = 10;
 				int textY = ((int)Height - h) / 2;
-
 
 				if (CaretHighlightOffset != -1) {
 					Pango.Rectangle rightStrongRect, rightRect;
@@ -226,7 +252,7 @@ namespace XamarinCanvas
 					layout.GetCursorPos (Math.Min (CaretOffset, CaretHighlightOffset), out leftStrongRect, out leftRect);
 
 					context.Rectangle (textX + Pango.Units.ToPixels (leftRect.X), textY + Pango.Units.ToPixels (leftRect.Y), Pango.Units.ToPixels (rightRect.X + rightRect.Width - leftRect.X), Pango.Units.ToPixels (leftRect.Height));
-					context.Color = new Cairo.Color (0.8, 0.9, 1, Opacity);
+					context.Color = HasFocus ? new Cairo.Color (0.8, 0.9, 1, Opacity) : new Cairo.Color (0.8, 0.8, 0.8, Opacity);
 					context.Fill ();
 				}
 
@@ -243,18 +269,24 @@ namespace XamarinCanvas
 				}
 			}
 
+			OnLayoutOutline (context);
+			context.Clip ();
 			base.OnRender (context);
 		}
 
 		uint blinkHandler;
 		protected override void OnFocusIn ()
 		{
+			ShowPreEdit (false);
 			imContext.FocusIn ();
 			StartCaretBlink ();
 		}
 
 		protected override void OnFocusOut ()
 		{
+			if (string.IsNullOrEmpty (CurrentEntry)) {
+				ShowPreEdit (true);
+			}
 			imContext.FocusOut ();
 			StopCaretBlink ();
 		}
@@ -398,6 +430,8 @@ namespace XamarinCanvas
 		{
 			Pango.Layout result = new Pango.Layout (Canvas.PangoContext);
 			result.SetText (CurrentEntry);
+			result.Width = Pango.Units.FromPixels ((int)Width - 10);
+			result.Ellipsize = Pango.EllipsizeMode.Start;
 			return result;
 		}
 

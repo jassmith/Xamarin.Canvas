@@ -51,10 +51,24 @@
       <SpecificVersion>False</SpecificVersion>
     </Reference>
     <Reference Include="Mono.Posix" />
+    <Reference Include="MonoDevelop.Ide">
+      <HintPath>..\..\monodevelop\main\build\bin\MonoDevelop.Ide.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.Cairo" />
+    <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
     <EmbeddedResource Include="gtk-gui\gui.stetic">
       <LogicalName>gui.stetic</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icons\go-next-ltr.png">
+      <LogicalName>go-next-ltr.png</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icons\go-previous-ltr.png">
+      <LogicalName>go-previous-ltr.png</LogicalName>
+    </EmbeddedResource>
+    <EmbeddedResource Include="icons\searchbox-search-16.png">
+      <LogicalName>searchbox-search-16.png</LogicalName>
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
@@ -63,6 +77,13 @@
     <Compile Include="gtk-gui\MainWindow.cs" />
     <Compile Include="Main.cs" />
     <Compile Include="AssemblyInfo.cs" />
+    <Compile Include="SearchBoxCanvasElement.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
+  <ItemGroup>
+    <ProjectReference Include="..\XamarinCanvas\XamarinCanvas.csproj">
+      <Project>{127A68D0-DDB9-46E0-85FF-086E1A3FDC7F}</Project>
+      <Name>XamarinCanvas</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

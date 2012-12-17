@@ -36,6 +36,11 @@ namespace XamarinCanvas
 
 	public class CanvasElement : IComparable<CanvasElement>, Animatable
 	{
+		public virtual Gdk.CursorType Cursor { get {
+				return Gdk.CursorType.XCursor;
+			}
+		}
+
 		public bool InputTransparent { get; set; }
 		public bool Sensative { get; set; }
 		public bool Draggable { get; set; }
@@ -198,21 +203,18 @@ namespace XamarinCanvas
 			}
 		}
 
-		bool inverseValid;
 		Cairo.Matrix inverse;
 		internal Cairo.Matrix InverseTransform { get {
-//				if (!inverseValid) {
-					inverse.InitIdentity ();
-					inverse.Multiply (Transform);
-					
-					var parent = Parent;
-					while (parent != null) {
-						inverse.Multiply (parent.Transform);
-						parent = parent.Parent;
-					}
-					
-					inverse.Invert ();
-//				}
+				inverse.InitIdentity ();
+				inverse.Multiply (Transform);
+
+				var parent = Parent;
+				while (parent != null) {
+					inverse.Multiply (parent.Transform);
+					parent = parent.Parent;
+				}
+
+				inverse.Invert ();
 				return inverse;
 			}
 		}
@@ -262,6 +264,8 @@ namespace XamarinCanvas
 
 		public void Render (Cairo.Context context)
 		{
+			if (Opacity == 0)
+				return;
 			OnRender (context);
 			if (RenderEvent != null)
 				RenderEvent (this, new RenderEventArgs (context));
@@ -269,12 +273,18 @@ namespace XamarinCanvas
 
 		public void MouseIn ()
 		{
+			if (Canvas != null && Cursor != Gdk.CursorType.XCursor) {
+				Canvas.GdkWindow.Cursor = new Gdk.Cursor (Cursor);
+			}
 			State |= ElementState.Prelight;
 			OnMouseIn ();
 		}
 
 		public void MouseOut ()
 		{
+			if (Canvas != null && Cursor != Gdk.CursorType.XCursor) {
+				Canvas.GdkWindow.Cursor = null;
+			}
 			State &= ~ElementState.Prelight;
 			OnMouseOut ();
 		}
@@ -315,9 +325,40 @@ namespace XamarinCanvas
 				ClickEvent (this, EventArgs.Empty);
 		}
 
+		protected virtual void MoveChildFocus (bool reverse)
+		{
+			if (Children == null)
+				return;
+
+			var children = Children.AsEnumerable ();
+			if (reverse) {
+				children = children.Reverse ();
+			}
+			CanvasElement next = children.Where (c => c.CanFocus).SkipWhile (c => !c.HasFocus).Skip (1).FirstOrDefault ();
+			if (next != null) {
+				if (Canvas != null)
+					Canvas.FocusElement (next);
+			} else {
+				if (Parent != null)
+					Parent.MoveChildFocus (reverse);
+			}
+		}
+
 		public void KeyPress (Gdk.EventKey evnt)
 		{
-			OnKeyPress (evnt);
+			switch (evnt.Key) {
+			case Gdk.Key.Tab:
+				if (Parent != null)
+					MoveChildFocus (false);
+				break;
+			case Gdk.Key.ISO_Left_Tab:
+				if (Parent != null)
+					MoveChildFocus (true);
+				break;
+			default:
+				OnKeyPress (evnt);
+				break;
+			}
 		}
 
 		public void KeyRelease (Gdk.EventKey evnt)
@@ -378,9 +419,6 @@ namespace XamarinCanvas
 
 		public void MoveTo (double x, double y, uint length = 250, Func<float, float> easing = null)
 		{
-			if (x == X && y == Y)
-				return;
-
 			if (easing == null)
 				easing = Easing.Linear;
 			new Animation ()
@@ -407,9 +445,6 @@ namespace XamarinCanvas
 
 		public void SizeTo (double width, double height, uint length = 250, Func<float, float> easing = null)
 		{
-			if (width == Width && height == Height)
-				return;
-			
 			if (easing == null)
 				easing = Easing.Linear;
 			new Animation ()
@@ -418,9 +453,17 @@ namespace XamarinCanvas
 				.Commit (this, "SizeTo", 16, length);
 		}
 
+		public void FadeTo (double opacity, uint length = 250, Func<float, float> easing = null)
+		{
+			if (easing == null)
+				easing = Easing.Linear;
+
+			new Animation (f => Opacity = f, (float)Opacity, (float)opacity, easing)
+				.Commit (this, "FadeTo", 16, length);
+		}
+
 		public void CancelAnimations ()
 		{
-			// Fixme : needs to abort all animations
 			this.AbortAnimation ("MoveTo");
 			this.AbortAnimation ("RotateTo");
 			this.AbortAnimation ("ScaleTo");

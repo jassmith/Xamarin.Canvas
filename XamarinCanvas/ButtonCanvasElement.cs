@@ -15,6 +15,12 @@ namespace XamarinCanvas
 	{
 		CanvasElement child;
 
+		public override Gdk.CursorType Cursor {
+			get {
+				return Relief ? base.Cursor : Gdk.CursorType.Hand1;
+			}
+		}
+
 		public bool Relief { get; set; }
 		public int Rounding { get; set; }
 
@@ -31,7 +37,6 @@ namespace XamarinCanvas
 
 		public ButtonCanvasElement (CanvasElement child)
 		{
-			InputTransparent = false;
 			internalPadding = 10;
 			Relief = true;
 			Rounding = 5;
@@ -78,17 +83,17 @@ namespace XamarinCanvas
 			child.Y = (height - childHeight) / 2;
 		}
 
-		void CreateGradient (Cairo.LinearGradient lg)
+		public static void CreateGradient (Cairo.LinearGradient lg, ElementState state, double opacity)
 		{
-			if (State.HasFlag (ElementState.Pressed)) {
-				lg.AddColorStop (0, new Cairo.Color (0.9, 0.9, 0.9, Opacity));
-				lg.AddColorStop (1, new Cairo.Color (1, 1, 1, Opacity));
-			} else if (State.HasFlag (ElementState.Prelight)) {
-				lg.AddColorStop (0, new Cairo.Color (1, 1, 1, Opacity));
-				lg.AddColorStop (1, new Cairo.Color (0.95, 0.95, 0.95, Opacity));
+			if (state.HasFlag (ElementState.Pressed)) {
+				lg.AddColorStop (0, new Cairo.Color (0.9, 0.9, 0.9, opacity));
+				lg.AddColorStop (1, new Cairo.Color (1, 1, 1, opacity));
+			} else if (state.HasFlag (ElementState.Prelight)) {
+				lg.AddColorStop (0, new Cairo.Color (1, 1, 1, opacity));
+				lg.AddColorStop (1, new Cairo.Color (0.95, 0.95, 0.95, opacity));
 			} else {
-				lg.AddColorStop (0, new Cairo.Color (1, 1, 1, Opacity));
-				lg.AddColorStop (1, new Cairo.Color (0.9, 0.9, 0.9, Opacity));
+				lg.AddColorStop (0, new Cairo.Color (1, 1, 1, opacity));
+				lg.AddColorStop (1, new Cairo.Color (0.9, 0.9, 0.9, opacity));
 			}
 
 		}
@@ -98,7 +103,7 @@ namespace XamarinCanvas
 			context.RoundedRectangle (0.5, 0.5, Width - 1, Height - 1, Rounding);
 			if (Relief) {
 				using (var lg = new Cairo.LinearGradient (0, 0, 0, Height)) {
-					CreateGradient (lg);
+					CreateGradient (lg, State, Opacity);
 					context.Pattern = lg;
 					context.FillPreserve ();
 				}

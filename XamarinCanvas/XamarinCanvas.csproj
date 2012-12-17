@@ -6,7 +6,7 @@
     <ProductVersion>10.0.0</ProductVersion>
     <SchemaVersion>2.0</SchemaVersion>
     <ProjectGuid>{127A68D0-DDB9-46E0-85FF-086E1A3FDC7F}</ProjectGuid>
-    <OutputType>WinExe</OutputType>
+    <OutputType>Library</OutputType>
     <RootNamespace>XamarinCanvas</RootNamespace>
     <AssemblyName>XamarinCanvas</AssemblyName>
   </PropertyGroup>
@@ -61,21 +61,9 @@
     <EmbeddedResource Include="gtk-gui\gui.stetic">
       <LogicalName>gui.stetic</LogicalName>
     </EmbeddedResource>
-    <EmbeddedResource Include="icons\go-next-ltr.png">
-      <LogicalName>go-next-ltr.png</LogicalName>
-    </EmbeddedResource>
-    <EmbeddedResource Include="icons\go-previous-ltr.png">
-      <LogicalName>go-previous-ltr.png</LogicalName>
-    </EmbeddedResource>
-    <EmbeddedResource Include="icons\searchbox-search-16.png">
-      <LogicalName>searchbox-search-16.png</LogicalName>
-    </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
     <Compile Include="gtk-gui\generated.cs" />
-    <Compile Include="MainWindow.cs" />
-    <Compile Include="gtk-gui\MainWindow.cs" />
-    <Compile Include="Main.cs" />
     <Compile Include="AssemblyInfo.cs" />
     <Compile Include="Canvas.cs" />
     <Compile Include="EntryCanvasElement.cs" />
@@ -85,9 +73,7 @@
     <Compile Include="CanvasElement.cs" />
     <Compile Include="ButtonCanvasElement.cs" />
     <Compile Include="ImageCanvasElement.cs" />
+    <Compile Include="HBoxCanvasElement.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <ItemGroup>
-    <Folder Include="icons\" />
-  </ItemGroup>
 </Project>

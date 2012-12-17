@@ -24,7 +24,6 @@ namespace XamarinCanvas
 
 		public GroupCanvasElement ()
 		{
-			InputTransparent = true;
 			children = new List<CanvasElement> ();
 			roChildren = children.AsReadOnly ();
 		}

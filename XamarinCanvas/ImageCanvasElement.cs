@@ -16,9 +16,14 @@ namespace XamarinCanvas
 		Gdk.Pixbuf pbuf;
 		SurfaceWrapper surfaceCache;
 
+		public double XAlign { get; set; }
+		public double YAlign { get; set; }
+
 		public ImageCanvasElement (Gdk.Pixbuf pbuf)
 		{
 			SetImage (pbuf);
+			XAlign = 0.5;
+			YAlign = 0.5;
 		}
 
 		public void SetImage (Gdk.Pixbuf pbuf)
@@ -41,7 +46,9 @@ namespace XamarinCanvas
 				// will improve with CGLayer surfaces
 				surfaceCache = new SurfaceWrapper (context, pbuf);
 			}
-			context.SetSourceSurface (surfaceCache.Surface, 0, 0);
+			int x = (int)((Width - pbuf.Width) * XAlign);
+			int y = (int)((Height - pbuf.Height) * YAlign);
+			context.SetSourceSurface (surfaceCache.Surface, x, y);
 			double opacity = Opacity;
 			if (opacity == 1)
 				context.Paint ();
