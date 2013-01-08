@@ -48,11 +48,14 @@ namespace XamarinCanvas
 			}
 		}
 
-		public LabelCanvasElement (string label)
+		public LabelCanvasElement (string label) : this ()
 		{
 			Text = label;
-			Color = new Cairo.Color (0, 0, 0);
-
+		}
+		
+		public LabelCanvasElement ()
+		{
+			Color = new Cairo.Color (0, 0, 0);	
 			CanvasSet += (sender, e) => UpdateSize ();
 		}
 

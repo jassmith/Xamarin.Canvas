@@ -28,7 +28,7 @@ namespace XamarinCanvas
 			roChildren = children.AsReadOnly ();
 		}
 
-		public void Add (CanvasElement element)
+		public virtual void Add (CanvasElement element)
 		{
 			children.Add (element);
 			element.PreferedSizeChanged += OnChildPreferedSizeChanged;
@@ -42,7 +42,7 @@ namespace XamarinCanvas
 			element.SetSize (element.PreferedWidth, element.PreferedHeight);
 		}
 
-		public void Remove (CanvasElement element)
+		public virtual void Remove (CanvasElement element)
 		{
 			if (children.Remove (element)) {
 				element.Parent = null;

@@ -74,6 +74,7 @@
     <Compile Include="ButtonCanvasElement.cs" />
     <Compile Include="ImageCanvasElement.cs" />
     <Compile Include="HBoxCanvasElement.cs" />
+    <Compile Include="PolygonCanvasElement.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
 </Project>

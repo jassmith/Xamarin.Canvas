@@ -35,19 +35,25 @@ namespace XamarinCanvas
 			}
 		}
 
-		public ButtonCanvasElement (CanvasElement child)
+		public ButtonCanvasElement (CanvasElement child) : this ()
+		{
+			SetChild (child);
+		}
+
+		protected ButtonCanvasElement ()
 		{
 			internalPadding = 10;
 			Relief = true;
 			Rounding = 5;
+		}
 
+		protected void SetChild (CanvasElement child)
+		{
 			this.child = child;
 			child.InputTransparent = true;
-
 			Add (child);
-
+			
 			UpdateLayout ();
-
 			child.PreferedSizeChanged += (sender, e) => UpdateLayout ();
 		}
 

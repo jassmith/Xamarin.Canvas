@@ -11,6 +11,13 @@ namespace XamarinCanvas
 {
 	public class EntryCanvasElement : GroupCanvasElement
 	{
+		class PreEditData 
+		{
+			public string PreEditString;
+			public Pango.AttrList Attributes;
+			public int CursorPos;
+		}
+
 		bool drawCaret;
 		LabelCanvasElement preEditLabel;
 
@@ -20,6 +27,8 @@ namespace XamarinCanvas
 			}
 		}
 
+		PreEditData HintData { get; set; }
+
 		string currentEntry;
 		string CurrentEntry {
 			get {
@@ -28,6 +37,7 @@ namespace XamarinCanvas
 			set {
 				if (currentEntry == value)
 					return;
+				ShowPreEdit (string.IsNullOrEmpty (value));
 				currentEntry = value;
 				QueueDraw ();
 			}
@@ -63,7 +73,7 @@ namespace XamarinCanvas
 		Gtk.IMContext imContext;
 		public EntryCanvasElement ()
 		{
-			CurrentEntry = "";
+			currentEntry = "";
 			CaretOffset = 0;
 			CaretHighlightOffset = -1;
 
@@ -100,6 +110,11 @@ namespace XamarinCanvas
 			preEditLabel.X = 10;
 			preEditLabel.Y = 0;
 			preEditLabel.SetSize (Math.Max (0, width - 10), height);
+		}
+
+		protected override void OnChildPreferedSizeChanged (object sender, EventArgs e)
+		{
+			// thats nice we dont care
 		}
 
 		void HighlightTo (int x, int y)
@@ -202,6 +217,8 @@ namespace XamarinCanvas
 
 		void HandlePreeditEnd (object sender, EventArgs e)
 		{
+			HintData = null;
+			QueueDraw ();
 		}
 
 		void HandlePreeditStart (object sender, EventArgs e)
@@ -210,6 +227,14 @@ namespace XamarinCanvas
 
 		void HandlePreeditChanged (object sender, EventArgs e)
 		{
+			string val;
+			Pango.AttrList attrs;
+			int cursorPos;
+			imContext.GetPreeditString (out val, out attrs, out cursorPos);
+			HintData = new PreEditData ();
+			HintData.Attributes = attrs;
+			HintData.PreEditString = val;
+			HintData.CursorPos = cursorPos;
 			QueueDraw ();
 		}
 
@@ -277,16 +302,12 @@ namespace XamarinCanvas
 		uint blinkHandler;
 		protected override void OnFocusIn ()
 		{
-			ShowPreEdit (false);
 			imContext.FocusIn ();
 			StartCaretBlink ();
 		}
 
 		protected override void OnFocusOut ()
 		{
-			if (string.IsNullOrEmpty (CurrentEntry)) {
-				ShowPreEdit (true);
-			}
 			imContext.FocusOut ();
 			StopCaretBlink ();
 		}
@@ -409,10 +430,10 @@ namespace XamarinCanvas
 			}
 		}
 
-		protected override void OnButtonPress (double x, double y, uint button, Gdk.ModifierType state)
+		protected override void OnButtonPress (ButtonEventArgs args)
 		{
-			if (button == 1) {
-				int location = PositionToOffset ((int)x, (int)y);
+			if (args.Button == 1) {
+				int location = PositionToOffset ((int)args.X, (int)args.Y);
 				if (location >= 0) {
 					CaretOffset = location;
 					CaretHighlightOffset = -1;
@@ -433,20 +454,6 @@ namespace XamarinCanvas
 			result.Width = Pango.Units.FromPixels ((int)Width - 10);
 			result.Ellipsize = Pango.EllipsizeMode.Start;
 			return result;
-		}
-
-		protected override void OnClicked (double x, double y, Gdk.ModifierType state)
-		{
-			 if (state.HasFlag (Gdk.ModifierType.Button3Mask)) {
-				Random r = new Random ();
-				
-				RotateTo (r.Next (-10, 10) * r.NextDouble (), 1000, Easing.SpringOut);
-				CurveTo (r.Next (0, Canvas.Allocation.Width), r.Next (0, Canvas.Allocation.Height), 
-				         r.Next (0, Canvas.Allocation.Width), r.Next (0, Canvas.Allocation.Height), 
-				         r.Next (0, Canvas.Allocation.Width), r.Next (0, Canvas.Allocation.Height), 
-				         1000, Easing.CubicInOut);
-				ScaleTo ((0.1 + r.NextDouble ()) * 3, 1000, Easing.BounceOut);
-			}
 		}
 
 		void OnActivated ()

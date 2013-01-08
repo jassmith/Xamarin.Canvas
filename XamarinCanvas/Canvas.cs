@@ -216,7 +216,7 @@ namespace XamarinCanvas
 				DragOffset = new Gdk.Point ((int) (point.X - MouseGrabElement.X), (int) (point.Y - MouseGrabElement.Y));
 
 				var transformedPoint = TransformPoint (MouseGrabElement, x, y);
-				MouseGrabElement.ButtonPress (transformedPoint.X, transformedPoint.Y, evnt.Button, evnt.State);
+				MouseGrabElement.ButtonPress (new ButtonEventArgs (transformedPoint.X, transformedPoint.Y, evnt.XRoot, evnt.YRoot, evnt.Button, evnt.State));
 			}
 
 			return true;
@@ -230,7 +230,7 @@ namespace XamarinCanvas
 			if (MouseGrabElement != null) {
 				var element = GetInputElementAt (x, y);
 				var point = TransformPoint (MouseGrabElement, x, y);
-				MouseGrabElement.ButtonRelease (point.X, point.Y, evnt.Button, evnt.State);
+				MouseGrabElement.ButtonRelease (new ButtonEventArgs (point.X, point.Y, evnt.XRoot, evnt.YRoot, evnt.Button, evnt.State));
 
 				if (element == MouseGrabElement && !dragging) {
 					element.Clicked (point.X, point.Y, evnt.State);
@@ -242,6 +242,15 @@ namespace XamarinCanvas
 			dragging = false;
 			MouseGrabElement = null;
 			return true;
+		}
+
+		protected override bool OnGrabBrokenEvent (Gdk.EventGrabBroken evnt)
+		{
+			if (MouseGrabElement != null) {
+				MouseGrabElement.GrabBroken ();
+				MouseGrabElement = null;
+			}
+			return base.OnGrabBrokenEvent (evnt);
 		}
 
 		protected override bool OnFocusInEvent (Gdk.EventFocus evnt)

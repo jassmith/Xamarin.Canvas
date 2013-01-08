@@ -9,6 +9,7 @@ using MonoDevelop.Ide.Gui;
 
 namespace XamarinCanvas
 {
+
 	public enum ElementState {
 		Prelight = 1,
 		Pressed = 1 << 1,
@@ -16,7 +17,7 @@ namespace XamarinCanvas
 
 	public class LayoutEventArgs : EventArgs
 	{
-		public Cairo.Context Context { get; set; }
+		public Cairo.Context Context { get; private set; }
 		
 		public LayoutEventArgs (Cairo.Context context)
 		{
@@ -26,11 +27,80 @@ namespace XamarinCanvas
 
 	public class RenderEventArgs : EventArgs
 	{
-		public Cairo.Context Context { get; set; }
+		public Cairo.Context Context { get; private set; }
 
 		public RenderEventArgs (Cairo.Context context)
 		{
 			Context = context;
+		}
+	}
+
+	public class MenuItemActivatedArgs : EventArgs
+	{
+		public MenuEntry Entry { get; private set; }
+
+		public MenuItemActivatedArgs (MenuEntry entry)
+		{
+			Entry = entry;
+		}
+
+	}
+
+	public class ButtonEventArgs : EventArgs
+	{
+		public double X { get; private set; }
+		public double Y { get; private set; }
+		public double XRoot { get; private set; }
+		public double YRoot { get; private set; }
+		public uint Button { get; private set; }
+		public Gdk.ModifierType State { get; private set; }
+
+		public ButtonEventArgs (double x, double y, double rootX, double rootY, uint button, Gdk.ModifierType state) 
+		{
+			X = x;
+			Y = y;
+			XRoot = rootX;
+			YRoot = rootY;
+			Button = button;
+			State = state;
+		}
+	}
+
+	public struct MenuEntry
+	{
+		public string Name;
+		public object Data;
+
+		public MenuEntry (string name, object data) 
+		{
+			Name = name;
+			Data = data;
+		}
+	}
+
+	public interface IContinuation<T>
+	{
+		void ContinueWith (Action<T> action);
+	}
+
+	public class Continuation<T> : IContinuation<T>
+	{
+		List<Action<T>> actions;
+
+		public Continuation ()
+		{
+			actions = new List<Action<T>> ();
+		}
+
+		public void ContinueWith (Action<T> action)
+		{
+			actions.Add (action);
+		}
+
+		public void Invoke (T val)
+		{
+			foreach (var action in actions)
+				action (val);
 		}
 	}
 
@@ -41,11 +111,13 @@ namespace XamarinCanvas
 			}
 		}
 
+		public bool NoChainOpacity { get; set; }
 		public bool InputTransparent { get; set; }
 		public bool Sensative { get; set; }
 		public bool Draggable { get; set; }
 		public bool CanFocus { get; set; }
 		public bool HasFocus { get; private set; }
+		public List<MenuEntry> MenuItems { get; set; }
 
 		ElementState state;
 		public ElementState State {
@@ -131,13 +203,13 @@ namespace XamarinCanvas
 		public double Opacity {
 			get {
 				double result = opacity;
-				if (Parent != null)
+				if (Parent != null && !NoChainOpacity)
 					result *= Parent.Opacity;
 
 				return result;
 			}
 			set {
-				opacity = value;
+				opacity = Math.Max (0, Math.Min (1, value));
 			}
 		}
 
@@ -183,12 +255,17 @@ namespace XamarinCanvas
 		public event EventHandler<RenderEventArgs> RenderEvent;
 		public event EventHandler<LayoutEventArgs> LayoutEvent;
 
+		public event EventHandler<MenuItemActivatedArgs> MenuItemActivatedEvent;
+
+		public event EventHandler<ButtonEventArgs> ButtonPressEvent;
+		public event EventHandler<ButtonEventArgs> ButtonReleaseEvent;
+
 		public event EventHandler SizeChanged;
 		public event EventHandler PreferedSizeChanged;
 
 		bool transformValid;
 		Cairo.Matrix transform;
-		internal Cairo.Matrix Transform { 
+		public Cairo.Matrix Transform { 
 			get {
 				if (!transformValid) {
 					transform.InitIdentity ();
@@ -204,7 +281,7 @@ namespace XamarinCanvas
 		}
 
 		Cairo.Matrix inverse;
-		internal Cairo.Matrix InverseTransform { get {
+		public Cairo.Matrix InverseTransform { get {
 				inverse.InitIdentity ();
 				inverse.Multiply (Transform);
 
@@ -264,8 +341,6 @@ namespace XamarinCanvas
 
 		public void Render (Cairo.Context context)
 		{
-			if (Opacity == 0)
-				return;
 			OnRender (context);
 			if (RenderEvent != null)
 				RenderEvent (this, new RenderEventArgs (context));
@@ -294,16 +369,29 @@ namespace XamarinCanvas
 			OnMouseMotion (x, y, state);
 		}
 
-		public void ButtonPress (double x, double y, uint button, Gdk.ModifierType state) 
+		public void ButtonPress (ButtonEventArgs args) 
 		{
 			State |= ElementState.Pressed;
-			OnButtonPress (x, y, button, state);
+			OnButtonPress (args);
+
+			if (ButtonPressEvent != null) {
+				ButtonPressEvent (this, args);
+			}
 		}
 
-		public void ButtonRelease (double x, double y, uint button, Gdk.ModifierType state) 
+		public void ButtonRelease (ButtonEventArgs args) 
 		{
 			State &= ~ElementState.Pressed;
-			OnButtonRelease (x, y, button, state);
+			OnButtonRelease (args);
+
+			if (ButtonReleaseEvent != null) {
+				ButtonReleaseEvent (this, args);
+			}
+		}
+
+		public void GrabBroken ()
+		{
+			State &= ~ElementState.Pressed;
 		}
 
 		public void FocusIn ()
@@ -386,10 +474,13 @@ namespace XamarinCanvas
 			return new Cairo.PointD(resX, resY);
 		}
 
-		public void CurveTo (double x1, double y1, double x2, double y2, double x3, double y3, uint length = 250, Func<float, float> easing = null)
+		public IContinuation<bool> CurveTo (double x1, double y1, double x2, double y2, double x3, double y3, uint length = 250, Func<float, float> easing = null)
 		{
 			if (easing == null)
 				easing = Easing.Linear;
+
+			Continuation<bool> result = new Continuation<bool> ();
+
 			Cairo.PointD start = new Cairo.PointD (X, Y);
 			Cairo.PointD p1 = new Cairo.PointD (x1, y1);
 			Cairo.PointD p2 = new Cairo.PointD (x2, y2);
@@ -399,67 +490,105 @@ namespace XamarinCanvas
 				X = position.X;
 				Y = position.Y;
 			}, 0, 1, easing)
-				.Commit (this, "MoveTo", 16, length);
+				.Commit (this, "MoveTo", 16, length, finished: (f, a) => {
+					result.Invoke (a);
+				});
+
+			return result;
 		}
 
-		public void RelMoveTo (double dx, double dy, uint length = 250, Func<float, float> easing = null)
+		public IContinuation<bool> RelMoveTo (double dx, double dy, uint length = 250, Func<float, float> easing = null)
 		{
-			MoveTo (X + dx, Y + dy, length, easing);
+			return MoveTo (X + dx, Y + dy, length, easing);
 		}
 
-		public void RelRotateTo (double drotation, uint length = 250, Func<float, float> easing = null)
+		public IContinuation<bool> RelRotateTo (double drotation, uint length = 250, Func<float, float> easing = null)
 		{
-			RotateTo (Rotation + drotation, length, easing);
+			return RotateTo (Rotation + drotation, length, easing);
 		}
 
-		public void RelScaleTo (double dscale, uint length = 250, Func<float, float> easing = null)
+		public IContinuation<bool> RelScaleTo (double dscale, uint length = 250, Func<float, float> easing = null)
 		{
-			ScaleTo (Scale + dscale, length, easing);
+			return ScaleTo (Scale + dscale, length, easing);
 		}
 
-		public void MoveTo (double x, double y, uint length = 250, Func<float, float> easing = null)
+		public IContinuation<bool> MoveTo (double x, double y, uint length = 250, Func<float, float> easing = null)
 		{
 			if (easing == null)
 				easing = Easing.Linear;
+
+			Continuation<bool> result = new Continuation<bool> ();
+
 			new Animation ()
 				.Insert (0, 1, new Animation (f => X = f, (float)X, (float)x, easing))
 				.Insert (0, 1, new Animation (f => Y = f, (float)Y, (float)y, easing))
-				.Commit (this, "MoveTo", 16, length);
+				.Commit (this, "MoveTo", 16, length, finished: (f, a) => {
+					result.Invoke (a);
+				});
+
+			return result;
 		}
 
-		public void RotateTo (double roatation, uint length = 250, Func<float, float> easing = null)
+		public IContinuation<bool> RotateTo (double roatation, uint length = 250, Func<float, float> easing = null)
 		{
 			if (easing == null)
 				easing = Easing.Linear;
+
+			Continuation<bool> result = new Continuation<bool> ();
+
 			new Animation (f => Rotation = f, (float)Rotation, (float)roatation, easing)
-				.Commit (this, "RotateTo", 16, length);
+				.Commit (this, "RotateTo", 16, length, finished: (f, a) => {
+					result.Invoke (a);
+				});
+
+			return result;
 		}
 
-		public void ScaleTo (double scale, uint length = 250, Func<float, float> easing = null)
+		public IContinuation<bool> ScaleTo (double scale, uint length = 250, Func<float, float> easing = null)
 		{
 			if (easing == null)
 				easing = Easing.Linear;
+
+			Continuation<bool> result = new Continuation<bool> ();
+
 			new Animation (f => Scale = f, (float)Scale, (float)scale, easing)
-				.Commit (this, "ScaleTo", 16, length);
+				.Commit (this, "ScaleTo", 16, length, finished: (f, a) => {
+					result.Invoke (a);
+				});
+
+			return result;
 		}
 
-		public void SizeTo (double width, double height, uint length = 250, Func<float, float> easing = null)
+		public IContinuation<bool> SizeTo (double width, double height, uint length = 250, Func<float, float> easing = null)
 		{
 			if (easing == null)
 				easing = Easing.Linear;
+
+			Continuation<bool> result = new Continuation<bool> ();
+
+			var wInterp = AnimationExtensions.Interpolate ((float)Width, (float)width);
+			var hInterp = AnimationExtensions.Interpolate ((float)Height, (float)height);
 			new Animation ()
-				.Insert (0, 1, new Animation (f => Width = f, (float)Width, (float)width, easing))
-				.Insert (0, 1, new Animation (f => Height = f, (float)Height, (float)height, easing))
-				.Commit (this, "SizeTo", 16, length);
+				.Insert (0, 1, new Animation (f => SetSize (wInterp (f), hInterp (f)) , 0, 1, easing))
+				.Commit (this, "SizeTo", 16, length, finished: (f, a) => {
+					result.Invoke (a);
+				});
+
+			return result;
 		}
 
-		public void FadeTo (double opacity, uint length = 250, Func<float, float> easing = null)
+		public IContinuation<bool> FadeTo (double opacity, uint length = 250, Func<float, float> easing = null)
 		{
 			if (easing == null)
 				easing = Easing.Linear;
 
+			Continuation<bool> result = new Continuation<bool> ();
 			new Animation (f => Opacity = f, (float)Opacity, (float)opacity, easing)
-				.Commit (this, "FadeTo", 16, length);
+				.Commit (this, "FadeTo", 16, length, finished: (f, a) => {
+					result.Invoke (a);
+				});
+
+			return result;
 		}
 
 		public void CancelAnimations ()
@@ -497,8 +626,8 @@ namespace XamarinCanvas
 		protected virtual void OnMouseIn () {}
 		protected virtual void OnMouseOut () {}
 		protected virtual void OnMouseMotion (double x, double y, Gdk.ModifierType state) {}
-		protected virtual void OnButtonPress (double x, double y, uint button, Gdk.ModifierType state) {}
-		protected virtual void OnButtonRelease (double x, double y, uint button, Gdk.ModifierType state) {}
+		protected virtual void OnButtonPress (ButtonEventArgs args) {}
+		protected virtual void OnButtonRelease (ButtonEventArgs args) {}
 		protected virtual void OnClicked (double x, double y, Gdk.ModifierType state) {}
 		protected virtual void OnFocusIn () {}
 		protected virtual void OnFocusOut () {}
@@ -527,6 +656,37 @@ namespace XamarinCanvas
 			if (Canvas != null) {
 				Canvas.ChildNeedDraw ();
 			}
+		}
+
+		Gdk.Point menuPosition;
+		public void ShowMenu (int rootX, int rootY, uint button)
+		{
+			if (MenuItems == null || !MenuItems.Any ())
+				return;
+			Gtk.Menu menu = new Gtk.Menu ();
+
+			foreach (var item in MenuItems) {
+				Gtk.MenuItem menuItem = new Gtk.MenuItem (item.Name);
+				var tmp = item;
+				menuItem.Activated += (sender, e) => {
+					if (MenuItemActivatedEvent != null)
+						MenuItemActivatedEvent (this, new MenuItemActivatedArgs (tmp));
+				};
+				menu.Append (menuItem);
+				menuItem.Show ();
+			}
+
+			
+			menuPosition = new Gdk.Point (rootX, rootY);
+			menu.Popup (null, null, PositionMenu, button, Gtk.Global.CurrentEventTime);
+		}
+
+		void PositionMenu (Gtk.Menu menu, out int x, out int y, out bool pushIn)
+		{
+			x = menuPosition.X;
+			y = menuPosition.Y;
+			pushIn = false;
+
 		}
 
 		#region IComparable implementation
