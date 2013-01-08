@@ -85,9 +85,5 @@
       <Project>{127A68D0-DDB9-46E0-85FF-086E1A3FDC7F}</Project>
       <Name>XamarinCanvas</Name>
     </ProjectReference>
-    <ProjectReference Include="..\..\..\Downloads\Farseer Physics Engine 3.3.1 Class\Farseer Physics.csproj">
-      <Project>{A4610E4C-DD34-428B-BABB-779CA0B5993A}</Project>
-      <Name>Farseer Physics</Name>
-    </ProjectReference>
   </ItemGroup>
 </Project>

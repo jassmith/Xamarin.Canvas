@@ -5,8 +5,6 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "XamarinCanvas", "XamarinCan
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "CanvasTest", "CanvasTest\CanvasTest.csproj", "{D5FACE2A-7DDA-480B-904C-D9A9781BC0B4}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Farseer Physics", "..\..\Downloads\Farseer Physics Engine 3.3.1 Class\Farseer Physics.csproj", "{A4610E4C-DD34-428B-BABB-779CA0B5993A}"
-EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|x86 = Debug|x86
@@ -17,10 +15,6 @@ Global
 		{127A68D0-DDB9-46E0-85FF-086E1A3FDC7F}.Debug|x86.Build.0 = Debug|x86
 		{127A68D0-DDB9-46E0-85FF-086E1A3FDC7F}.Release|x86.ActiveCfg = Release|x86
 		{127A68D0-DDB9-46E0-85FF-086E1A3FDC7F}.Release|x86.Build.0 = Release|x86
-		{A4610E4C-DD34-428B-BABB-779CA0B5993A}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{A4610E4C-DD34-428B-BABB-779CA0B5993A}.Debug|x86.Build.0 = Debug|Any CPU
-		{A4610E4C-DD34-428B-BABB-779CA0B5993A}.Release|x86.ActiveCfg = Release|Any CPU
-		{A4610E4C-DD34-428B-BABB-779CA0B5993A}.Release|x86.Build.0 = Release|Any CPU
 		{D5FACE2A-7DDA-480B-904C-D9A9781BC0B4}.Debug|x86.ActiveCfg = Debug|x86
 		{D5FACE2A-7DDA-480B-904C-D9A9781BC0B4}.Debug|x86.Build.0 = Debug|x86
 		{D5FACE2A-7DDA-480B-904C-D9A9781BC0B4}.Release|x86.ActiveCfg = Release|x86
